@@ -6,4 +6,5 @@ def void main() {
     int32 b = 1;
     int32 d = 1;
     int32 c = a*b + 4 * (b+d);
+    print(c);
 }
