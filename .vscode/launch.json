@@ -7,16 +7,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'http_cursed'",
+            "name": "Debug unit tests in library 'toy_lang'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=playground"
+                    "--package=toy_lang"
                 ],
                 "filter": {
-                    "name": "http_cursed",
+                    "name": "toy_lang",
                     "kind": "lib"
                 }
             },
@@ -26,15 +26,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'main'",
+            "name": "Debug executable 'toy_lang'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=main",
-                    "--package=playground"
+                    "--bin=toy_lang",
+                    "--package=toy_lang"
                 ],
                 "filter": {
-                    "name": "main",
+                    "name": "toy_lang",
                     "kind": "bin"
                 }
             },
@@ -44,16 +44,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'main'",
+            "name": "Debug unit tests in executable 'toy_lang'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=main",
-                    "--package=playground"
+                    "--bin=toy_lang",
+                    "--package=toy_lang"
                 ],
                 "filter": {
-                    "name": "main",
+                    "name": "toy_lang",
                     "kind": "bin"
                 }
             },
