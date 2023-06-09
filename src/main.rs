@@ -7,5 +7,5 @@ fn main() {
 
     println!("{:#?}", tu);
 
-    toy_lang::create_llvm_ir(&tu, "example.ll");
+    toy_lang::asadfasf(&tu, "example.ll");
 }
