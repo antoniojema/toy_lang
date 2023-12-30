@@ -4,8 +4,6 @@ use super::ast::*;
 const PRIORITY : &'static [&'static [Operator]] = &[
     &[Operator::Comma],
     &[Operator::Assign, Operator::PlusEq, Operator::MinusEq, Operator::TimesEq, Operator::DivEq, Operator::ModEq, Operator::AndEq, Operator::OrEq, Operator::XorEq, Operator::ShiftLeftEq, Operator::ShiftRightEq, Operator::BitwiseAndEq, Operator::BitwiseOrEq, Operator::BitwiseXorEq],
-    &[Operator::Plus, Operator::Minus],
-    &[Operator::Times, Operator::Div, Operator::Mod],
     &[Operator::Equals, Operator::NotEquals],
     &[Operator::Or],
     &[Operator::And],
@@ -15,7 +13,10 @@ const PRIORITY : &'static [&'static [Operator]] = &[
     &[Operator::BitwiseAnd],
     &[Operator::BitwiseXor],
     &[Operator::ShiftLeft, Operator::ShiftRight],
-    &[Operator::Point]
+    &[Operator::Point],
+    &[Operator::Plus, Operator::Minus],
+    &[Operator::Times, Operator::Div, Operator::Mod],
+    &[Operator::UnaryPlus, Operator::UnaryMinus],
 ];
 
 pub struct OperationParser<'a> {
@@ -133,11 +134,19 @@ fn read_operation_in(&mut self, tok_begin : usize, tok_end : usize) -> Operation
             _ => panic!("This should never happen")
         };
 
-        return OperationResult::BinOpResult(BinaryOperation{
-            left  : Box::new(self.read_operation_in(tok_begin, i)),
-            right : Box::new(self.read_operation_in(i+1, tok_end)),
-            operator : BinaryOperator::from(&op)
-        });
+        if op.is_unary() {
+            return OperationResult::UnOpResult(UnaryOperation{
+                operand : Box::new(self.read_operation_in(i+1, tok_end)),
+                operator : UnaryOperator::from(&op)
+            });
+        }
+        else {
+            return OperationResult::BinOpResult(BinaryOperation{
+                left  : Box::new(self.read_operation_in(tok_begin, i)),
+                right : Box::new(self.read_operation_in(i+1, tok_end)),
+                operator : BinaryOperator::from(&op)
+            });
+        }
     }
 
     // Read function call

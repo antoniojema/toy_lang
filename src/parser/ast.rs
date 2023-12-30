@@ -42,6 +42,22 @@ impl BinaryOperator {
 }
 
 #[derive(Debug)]
+pub enum UnaryOperator {
+    Plus,
+    Minus,
+}
+
+impl UnaryOperator {
+    pub fn from(op : &Operator) -> UnaryOperator {
+        match op {
+            Operator::UnaryPlus => UnaryOperator::Plus,
+            Operator::UnaryMinus => UnaryOperator::Minus,
+            _ => panic!("Invalid operator for BinaryOperator"),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum Literal {
     Integer(String),
     Float(String),
@@ -54,7 +70,14 @@ pub enum OperationResult {
     Literal(Literal),
     Identifier(String),
     BinOpResult(BinaryOperation),
+    UnOpResult(UnaryOperation),
     FuncResult(ApplyFunction),
+}
+
+#[derive(Debug)]
+pub struct UnaryOperation {
+    pub operator : UnaryOperator,
+    pub operand : Box<OperationResult>,
 }
 
 #[derive(Debug)]

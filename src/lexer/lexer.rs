@@ -1,16 +1,9 @@
 use super::lexeme::*;
 use super::tokens::*;
+use super::error::*;
 use std::fs;
 use std::io::{BufReader, BufRead};
 
-fn open_file(file_path : &str) -> fs::File {
-    match fs::File::open(file_path) {
-        Ok(f) => f,
-        Err(e) => {
-            panic!("{}",e);
-        } 
-    }
-}
 
 fn is_identifier_init(ch : char) -> bool {
     return
@@ -159,15 +152,18 @@ fn find_token(line : &str) -> Token {
         let mut e_found : bool = false;
         let mut e_just_found : bool = false;
         let mut e_pm_just_found : bool = false;
+        let mut is_error : bool = false;
 
         let mut n : usize = 0;
         for ch in line.chars() {
-            if !point_found && ch == '.' {
+            if ch == '.' {
+                is_error = is_error || point_found;
                 point_found = true;
                 n += 1;
                 continue;
             }
-            if !e_found && (ch == 'e' || ch == 'E') {
+            if ch == 'e' || ch == 'E' {
+                is_error = is_error || e_found;
                 e_found = true;
                 e_just_found = true;
                 n += 1;
@@ -180,25 +176,30 @@ fn find_token(line : &str) -> Token {
                     n += 1;
                     continue;
                 }
-                if !ch.is_numeric() {
-                    panic!("Invalid numeric literal: {}", line);
-                }
+                is_error = is_error || !ch.is_numeric();
             }
             if e_pm_just_found {
                 e_pm_just_found = false;
-                if !ch.is_numeric() {
-                    panic!("Invalid numeric literal: {}", line);
-                }
+                is_error = is_error || !ch.is_numeric();
             }
 
-            if !ch.is_numeric() {break};
-            n += 1;
+            if is_identifier_continuation(ch) {
+                is_error = is_error || is_identifier_init(ch);
+                n += 1;
+                continue;
+            }
+
+            break;
         }
 
         let s = line[..n].trim();
-        if point_found || e_found {
+        if is_error {
+            return Token::TokenError(String::from(s));
+        }
+        else if point_found || e_found {
             return Token::Float(String::from(s));
-        } else {
+        }
+        else {
             return Token::Integer(String::from(s));
         };
     }
@@ -214,7 +215,7 @@ fn find_token(line : &str) -> Token {
         return Token::String(String::from(s));
     }
 
-    panic!("Invalid character found: {}", char_0);
+    return Token::TokenError(format!("{}", char_0));
 }
 
 fn find_first_not_of(s : &str, chars : Vec<char>) -> Option<usize> {
@@ -235,7 +236,32 @@ fn find_first_not_of(s : &str, chars : Vec<char>) -> Option<usize> {
     return None;
 }
 
-fn read_tokens_in_line<'a,'b>(lexeme: &'a mut Lexeme, mut line : &'b str, n_line : usize) {
+fn new_token_to_unary(lexeme : &Lexeme, token : &mut Token) {
+    let mut is_plus = false;
+    let mut is_minus = false;
+    if let Token::Operator(Operator::Plus) = &token {
+        is_plus = true;
+    }
+    else if let Token::Operator(Operator::Minus) = &token {
+        is_minus = true;
+    }
+    if !(is_plus || is_minus) {return;}
+    
+    match lexeme.last_non_comment().map(|t| &t.token) {
+        None | Some(Token::Delimiter(_)) | Some(Token::EndOfStatement) | Some(Token::Operator(_)) => {},
+        _ => return,
+    };
+
+    if is_plus  {*token = Token::Operator(Operator::UnaryPlus )}
+    if is_minus {*token = Token::Operator(Operator::UnaryMinus)}
+}
+
+fn read_tokens_in_line<'a,'b>(
+    lexeme: &'a mut Lexeme,
+    mut line : &'b str,
+    n_line : usize,
+    errors : &mut Vec<LexerError>,
+) {
     let mut ch : usize = match find_first_not_of(line, vec![' ', '\n', '\r', '\t']) {
         Some(n) => n,
         None => return,
@@ -244,8 +270,19 @@ fn read_tokens_in_line<'a,'b>(lexeme: &'a mut Lexeme, mut line : &'b str, n_line
     line = &line[ch..];
 
     while line.len() > 0 {
-        let token = find_token(&line);
+        let mut token = find_token(&line);
+
+        new_token_to_unary(lexeme, &mut token);
+
         let token_len = token.len();
+
+        if let Token::TokenError(_) = &token {
+            errors.push(LexerError::TokenError(Range {
+                line : n_line,
+                char_begin : ch,
+                char_end : ch+token_len,
+            }));
+        }
         
         match token {
             Token::Comment(_) => {},
@@ -256,7 +293,7 @@ fn read_tokens_in_line<'a,'b>(lexeme: &'a mut Lexeme, mut line : &'b str, n_line
                         line : n_line,
                         char_begin : ch,
                         char_end : ch+token_len,
-                    }
+                    },
                 });
             }
         }
@@ -274,17 +311,29 @@ fn read_tokens_in_line<'a,'b>(lexeme: &'a mut Lexeme, mut line : &'b str, n_line
     }
 }
 
-pub fn lexer(file_path : &str) -> Lexeme {
+pub fn lexer(file_path : &str) -> (Lexeme, Vec<LexerError>) {
     let mut lexeme = Lexeme::new();
+    let mut errors : Vec<LexerError> = vec![];
 
-    let file : fs::File = open_file(file_path);
+    let file = fs::File::open(file_path);
+    if file.is_err() {
+        errors.push(LexerError::CouldNotOpenFile(String::from(file_path)));
+        return (lexeme, errors);
+    }
+    let file = file.unwrap();
+
     let reader = BufReader::new(file);
 
     for (n_line, line) in reader.lines().enumerate() {
+        let line = line;
+        if line.is_err() {
+            errors.push(LexerError::CouldNotReadLine(n_line+1));
+            return (lexeme, errors);
+        }
         let line = line.unwrap();
 
-        read_tokens_in_line(&mut lexeme, &line, n_line);
+        read_tokens_in_line(&mut lexeme, &line, n_line, &mut errors);
     }
 
-    return lexeme;
+    return (lexeme, errors);
 }

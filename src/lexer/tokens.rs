@@ -47,6 +47,9 @@ impl Keyword {
 pub enum Operator {
     Assign,
 
+    UnaryPlus,
+    UnaryMinus,
+
     Plus,
     Minus,
     Times,
@@ -96,6 +99,9 @@ impl Operator {
     pub fn to_string<'a,'b>(&'a self) -> &'b str {
         match self {
             Operator::Assign => return "=",
+
+            Operator::UnaryPlus => return "+",
+            Operator::UnaryMinus => return "-",
 
             Operator::Plus => return "+",
             Operator::Minus => return "-",
@@ -188,6 +194,13 @@ impl Operator {
     pub fn len(&self) -> usize {
         self.to_string().len()
     }
+
+    pub fn is_unary(&self) -> bool {
+        match self {
+            Self::UnaryPlus | Self::UnaryMinus => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -218,7 +231,8 @@ pub enum Token {
     Boolean(bool),
     Identifier(String),
     Delimiter(Delimiter),
-    Comment(String)
+    Comment(String),
+    TokenError(String),
 }
 
 impl Token {
@@ -235,6 +249,7 @@ impl Token {
             Token::Identifier(s) => return s.len(),
             Token::Delimiter(d) => return d.len(),
             Token::Comment(s) => return s.len()+2,
+            Token::TokenError(s) => return s.len(),
         }
     }
 }

@@ -1,5 +1,6 @@
 use super::tokens::Token;
 use super::lexer::lexer;
+use super::error::LexerError;
 
 #[derive(Debug)]
 pub struct Range {
@@ -44,7 +45,39 @@ impl Lexeme {
         &mut self.tokens[index]
     }
 
-    pub fn from_file(file : &str) -> Lexeme {
+    pub fn last(&self) -> Option<&ContextedToken> {
+        self.tokens.last()
+    }
+
+    pub fn last_mut(&mut self) -> Option<&mut ContextedToken> {
+        self.tokens.last_mut()
+    }
+
+    pub fn last_non_comment(&self) -> Option<&ContextedToken> {
+        for token in self.tokens.iter().rev() {
+            if let Token::Comment(_) = token.token {
+                continue;
+            }
+            else {
+                return Some(token)
+            }
+        }
+        return None;
+    }
+
+    pub fn mut_last_non_comment(&mut self) -> Option<&mut ContextedToken> {
+        for token in self.tokens.iter_mut().rev() {
+            if let Token::Comment(_) = token.token {
+                continue;
+            }
+            else {
+                return Some(token)
+            }
+        }
+        return None;
+    }
+    
+    pub fn from_file(file : &str) ->(Lexeme, Vec<LexerError>) {
         lexer(file)
     }
 }
